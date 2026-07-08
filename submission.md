@@ -134,7 +134,7 @@ Bug Issue #1  with title "My listening streak keeps resetting"
 2. Reproduce the bug
 Verified the bug existed with the mixtape database.  `today.weekday() != 6` was searched to see why the bug was resetting. This what was triggering the behavior of the bug.  
 3. Found the root cause
-The root cause was found in service/ folder streak_service. First went to services and then to streak_service to see what was causing the streak to resent. 
+The root cause was found in service/ folder streak_service.py. First went to services and then to streak_service to see what was causing the streak to resent. Reviewed docstring. 
 4. The root cause 
 The root cause was the user streak was not adding up to the music days listened to. 
 5. Fix and side-effect check 
@@ -144,12 +144,16 @@ Removed elif last day equals 6 in `update_listening_streak()` which ultimately r
 1. Issue number and title 
 Bug Issue #2  with title "Friends Listening Now shows people from yesterday"
 2. Reproduce the bug
-Verified the bug existed with the mixtape database.  `today.weekday() != 6` was searched to see why the bug was resetting. This what was triggering the behavior of the bug.  
+Verified the bug was in feed_service.py. Used user's id to get information on listening-now. Viewed what friends had listened recently.
+
 3. Found the root cause
-The root cause was found in service/ folder streak_service. First went to services and then to streak_service to see what was causing the streak to resent. 
+The root cause was found in service/ folder and in feed_service.py. User complained about feed issues, went to feed_services to verify. Reviewed docstring. 
 4. The root cause 
-The root cause was the user streak was not adding up to the music days listened to. 
+The root cause of friends listening now shows people from yesterday was the `RECENT_THRESHHOLD in  = timedelta(hours=24)` in `get_friends_listening_now()`.
+There is a rolling 24-hour window from the moment of the request, and not a "since today started" cutoff.
 5. Fix and side-effect check 
+ A test was added to tests - test_feed.py since there is no test for test_feed.py
+
 ---
 
 1. Issue number and title 
