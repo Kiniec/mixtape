@@ -254,5 +254,5 @@ Ran `tests/test_playlists.py` — `test_playlist_returns_all_songs` and `test_pl
 
 
 
-## Girt Log --oneline
+## Git Log --oneline
 ![Image of git log screenshot](git_log.png)
