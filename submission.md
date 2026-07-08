@@ -1,18 +1,12 @@
-## Codebase orientation 
-## Fix at least 3 of the 5 bugs
-- fix each bug 
-- write a complete root cause analysis entry covering all 5 fields 
-## One commit per fis 
-- Each bug must have own commit on the bugfix/mixtape branch 
-- using conventional commit format with a descriptive message
+## AI
+<!-- - Section describes at least 2 specific uses of AI tools during codebase navigation or debugging — what was asked and what the tool helped explain or trace.
+- Section is honest about the collaboration — describes at least one instance where the student verified something the AI explained, or where the AI's output was incomplete and the student had to course-correct.
+- Descriptions are specific enough to distinguish real AI collaboration from generic statements like "I used AI to help with code." -->
+ In this project Copilot was asked to show a sample codebase mapping suggestions for the projects entry of a codebase map. Claude code was asked to explain how to fully reproduce a bug professional and effectively. Claude Code was also instructed to review code, determine what may have been a cause and make suggestions. It was also asked to add suggestions for regression testing.   
 
-## Fix 4th Bug 
-- Fix fourth issue with a complete root cause analysis entry 
-## Fix all 5 bugs
-- Fix the remaining fifth issue with a complete root cause analysis
+ ---
 
-
-## codebase map
+## Codebase map
 ```
 mixtape/
 ├── app.py                      # Flask application factory; configures SQLAlchemy, registers blueprints, and initializes the application
@@ -51,7 +45,7 @@ mixtape/
 | services/ | Contains business logic used by route handlers.
 | streak_service.py | Calculates and updates user listening streaks.
 | feed_services.py | Handles activity feed and friend listening requests. 
-| search_service.py |
+| search_service.py | 
 notification_service.py | 
 playlist_service.py \ |
 models.py |
@@ -61,11 +55,6 @@ requirements.txt |
 submission.md |
 .gitignore |
 
- 
-|Patterns| Description | 
-|-----|----| 
-|  Patterns of the folders lead directly to the services folder and to the database. 
-| Pattern I noticed: every route delegates immediately to a service function. The routes do input parsing and response formatting; all business logic lives in services/.
 
 
 
@@ -129,6 +118,8 @@ Expected: every song in the playlist is returned, including the newest. Actual: 
 
 
 ## Root Cause Analysis 
+
+
 1. Issue number and title 
 Bug Issue #1  with title "My listening streak keeps resetting"
 2. Reproduce the bug
@@ -140,6 +131,9 @@ The root cause was the user streak was not adding up to the music days listened 
 
 5. Fix and side-effect check 
 Removed elif last day equals 6 in `update_listening_streak()` which ultimately resets the streak. Checked test_streaks.py for functionally. 
+
+
+
 ---
 
 1. Issue number and title 
@@ -157,6 +151,7 @@ RECENT_THRESHOLD = timedelta(hours=24) in services/feed_service.py:13 creates a 
 
 ---
 
+
 1. Issue number and title 
 Bug Issue #3  with title "The same song keeps showing up twice in search"
 2. Reproduce the bug
@@ -167,30 +162,39 @@ Reproduced the bug by requesting query of "Anthem" and counting the entries for 
  The join to song_tags isn't used for filtering at all — no WHERE clause touches it. It's dead weight that only causes row fan-out: a song with 3 tags joins against 3 rows in song_tags, so the raw SQL returns 3 rows for that one song (I confirmed this directly — raw SQL returns 3 rows for a 3-tag song, verified with EXPLAIN-equivalent execution against an in-memory DB).
 5. Fix and side-effect check 
 The fix for bug was to removed the unused .outerjoin(song_tags, Song.id == song_tags.c.song_id) from search_songs() and unused Tag/song_tags imports. The query now just filters Song directly on title/artist; to_dict() still populates tags via the model's existing lazy="subquery" relationship, untouched.
+
+
+
 ---
+
 
 1. Issue number and title 
 Bug Issue #4  with title "I got notified when a friend added my song to a playlist but not when they rated it"
 2. Reproduce the bug
  
 3. Found the root cause
+The root was cause was found in services/notification_services.py. User complained of not being notified. The service notification was the first location to review. 
 4. The root cause 
-
+notification_service.rate_song() (services/notification_service.py) saved/updated the Rating row but never called create_notification() — unlike add_to_playlist(), which does notify the sharer. The rating itself worked fine (visible on the song, as aaliya observed); only the notification side effect was missing.
 5. Fix and side-effect check 
+A verification test of tests/test_notifications.py was added to tests due to no test for notifications. The fix for the notification was to notify the song sharer after the rating was committed.
+
 ---
+
 
 1. Issue number and title 
 Bug Issue #5  with title "The last song in a playlist never shows up"
 2. Reproduce the bug
-Verified the bug existed with the mixtape database.  `today.weekday() != 6` was searched to see why the bug was resetting. This what was triggering the behavior of the bug.  
+  Reproduced the bug by querying the database and the last song played.  
 3. Found the root cause
-The root cause was found in service/ folder streak_service. First went to services and then to streak_service to see what was causing the streak to resent. 
+The root cause was found in  playlist.songs.append(song). The user complained of last song of the playlist never showing up fot them. 
 4. The root cause 
-The root cause was the user streak was not adding up to the music days listened to. 
+ playlist.songs.append(song) uses SQLAlchemy's plain secondary= relationship shortcut, which only inserts the two foreign-key columns (playlist_id, song_id) into playlist_entries. That table also has position and added_by, both nullable=False with no default — so every insert failed with IntegrityError.
+
 5. Fix and side-effect check 
+Insert directly into the playlist_entries association table instead of using the relationship shortcut, computing the next position as max(existing positions) + 1 (0 if the playlist is empty) and passing added_by explicitly. Also removed the unused get_playlist_songs import that was dead code in this function.
+
+--- 
 
 
 
-## AI
-<!-- Used copilot for codebase mapping suggestions -->
-<!-- used Claude to fully understand milestone 2 - -->
