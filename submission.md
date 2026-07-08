@@ -137,6 +137,7 @@ Verified the bug existed with the mixtape database.  `today.weekday() != 6` was 
 The root cause was found in service/ folder streak_service.py. First went to services and then to streak_service to see what was causing the streak to resent. Reviewed docstring. 
 4. The root cause 
 The root cause was the user streak was not adding up to the music days listened to. 
+
 5. Fix and side-effect check 
 Removed elif last day equals 6 in `update_listening_streak()` which ultimately resets the streak. Checked test_streaks.py for functionally. 
 ---
@@ -145,36 +146,36 @@ Removed elif last day equals 6 in `update_listening_streak()` which ultimately r
 Bug Issue #2  with title "Friends Listening Now shows people from yesterday"
 2. Reproduce the bug
 Verified the bug was in feed_service.py. Used user's id to get information on listening-now. Viewed what friends had listened recently.
-
+Services/feed_service.py:13 used RECENT_THRESHOLD = timedelta(hours=24) — a rolling 24-hour window from the moment of the request, not a "since today started" boundary. An 11pm listen is still well inside a 24h window at 9am the next morning, so it kept showing up as "listening now."
 3. Found the root cause
 The root cause was found in service/ folder and in feed_service.py. User complained about feed issues, went to feed_services to verify. Reviewed docstring. 
 4. The root cause 
-The root cause of friends listening now shows people from yesterday was the `RECENT_THRESHHOLD in  = timedelta(hours=24)` in `get_friends_listening_now()`.
-There is a rolling 24-hour window from the moment of the request, and not a "since today started" cutoff.
+The root cause of friends listening now shows people from yesterday the cutoff time was not today and included any recent listening friends.
+RECENT_THRESHOLD = timedelta(hours=24) in services/feed_service.py:13 creates a rolling 24-hour window, not a "today" boundary — so an 11pm listen is still inside the window at 9am the next day (only 10 hours later). The report is explicit about the expected behavior: "only friends who have listened today appear." The fix is to cut off at the start of the current UTC calendar day instead of 24 hours back.
 5. Fix and side-effect check 
- A test was added to tests - test_feed.py since there is no test for test_feed.py
+ A test was added to tests - test_feed.py since there is no test for test_feed.py. Return a list of friends of today and removed recently and added a cut off time. 
 
 ---
 
 1. Issue number and title 
 Bug Issue #3  with title "The same song keeps showing up twice in search"
 2. Reproduce the bug
-Verified the bug existed with the mixtape database.  `today.weekday() != 6` was searched to see why the bug was resetting. This what was triggering the behavior of the bug.  
+Reproduced the bug by requesting query of "Anthem" and counting the entries for the query. Tags were not duplicating only on row joins.
 3. Found the root cause
-The root cause was found in service/ folder streak_service. First went to services and then to streak_service to see what was causing the streak to resent. 
+ The root cause was found in search_service.py , .outerjoin(). The current does not have a .distinct(). 
 4. The root cause 
-The root cause was the user streak was not adding up to the music days listened to. 
+ The join to song_tags isn't used for filtering at all — no WHERE clause touches it. It's dead weight that only causes row fan-out: a song with 3 tags joins against 3 rows in song_tags, so the raw SQL returns 3 rows for that one song (I confirmed this directly — raw SQL returns 3 rows for a 3-tag song, verified with EXPLAIN-equivalent execution against an in-memory DB).
 5. Fix and side-effect check 
+The fix for bug was to removed the unused .outerjoin(song_tags, Song.id == song_tags.c.song_id) from search_songs() and unused Tag/song_tags imports. The query now just filters Song directly on title/artist; to_dict() still populates tags via the model's existing lazy="subquery" relationship, untouched.
 ---
 
 1. Issue number and title 
 Bug Issue #4  with title "I got notified when a friend added my song to a playlist but not when they rated it"
 2. Reproduce the bug
-Verified the bug existed with the mixtape database.  `today.weekday() != 6` was searched to see why the bug was resetting. This what was triggering the behavior of the bug.  
+ 
 3. Found the root cause
-The root cause was found in service/ folder streak_service. First went to services and then to streak_service to see what was causing the streak to resent. 
 4. The root cause 
-The root cause was the user streak was not adding up to the music days listened to. 
+
 5. Fix and side-effect check 
 ---
 
